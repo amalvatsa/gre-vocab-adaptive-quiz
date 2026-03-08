@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b6b6b" />
+  <meta name="theme-color" content="#6a102b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="GRE Vocab Quiz" />
   <title>GRE Vocab Adaptive Quiz</title>
@@ -12,30 +12,53 @@
 </head>
 <body>
   <main class="app">
-    <h1>GRE Vocab Adaptive Quiz</h1>
-    <p class="sub">Built from your Vocab List 1-4 PDF. Missed words are prioritized automatically.</p>
+    <header class="hero">
+      <h1>GRE Vocab Adaptive Quiz</h1>
+      <p class="sub">Interactive quiz for Lists 1-14. Missed words return faster until you master them.</p>
+    </header>
 
     <section class="panel controls">
-      <div class="row">
-        <label>Quiz Mode</label>
-        <select id="quizType">
-          <option value="mixed">Mixed</option>
-          <option value="word_to_group">Word -> Meaning Group</option>
-          <option value="group_to_word">Meaning Group -> Word</option>
-        </select>
+      <div class="row two-col">
+        <div>
+          <label>Quiz Mode</label>
+          <select id="quizType">
+            <option value="mixed">Mixed</option>
+            <option value="word_to_group">Word -> Meaning Group</option>
+            <option value="group_to_word">Meaning Group -> Word</option>
+          </select>
+        </div>
+        <div>
+          <label>Questions</label>
+          <input id="questionCount" type="number" min="5" max="200" value="30" />
+        </div>
+      </div>
+
+      <div class="row two-col">
+        <div>
+          <label>List Preset</label>
+          <select id="listPreset">
+            <option value="all">All Lists (1-14)</option>
+            <option value="first4">Starter (1-4)</option>
+            <option value="first8">Core (1-8)</option>
+            <option value="last6">Advanced (9-14)</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+        <div>
+          <label>From / To</label>
+          <div class="range-wrap">
+            <select id="listStart"></select>
+            <span>to</span>
+            <select id="listEnd"></select>
+          </div>
+        </div>
       </div>
 
       <div class="row">
-        <label>Word Lists</label>
-        <div id="listContainer" class="checks"></div>
+        <p id="listPreview" class="list-preview"></p>
       </div>
 
-      <div class="row">
-        <label>Questions</label>
-        <input id="questionCount" type="number" min="5" max="200" value="30" />
-      </div>
-
-      <div class="row">
+      <div class="row checkbox-row">
         <label><input id="stuckOnly" type="checkbox" /> Focus only on stuck words</label>
       </div>
 
@@ -51,6 +74,8 @@
         <span id="scoreInfo"></span>
         <span id="accuracyInfo"></span>
       </div>
+
+      <div class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
 
       <h2 id="prompt"></h2>
       <div id="choices" class="choices"></div>

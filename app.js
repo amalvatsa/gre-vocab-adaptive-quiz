@@ -2,7 +2,10 @@ const STORAGE_KEY = "gre_vocab_learning_stats_v1";
 
 const el = {
   quizType: document.getElementById("quizType"),
-  listContainer: document.getElementById("listContainer"),
+  listPreset: document.getElementById("listPreset"),
+  listStart: document.getElementById("listStart"),
+  listEnd: document.getElementById("listEnd"),
+  listPreview: document.getElementById("listPreview"),
   questionCount: document.getElementById("questionCount"),
   stuckOnly: document.getElementById("stuckOnly"),
   startBtn: document.getElementById("startBtn"),
@@ -12,6 +15,7 @@ const el = {
   qInfo: document.getElementById("qInfo"),
   scoreInfo: document.getElementById("scoreInfo"),
   accuracyInfo: document.getElementById("accuracyInfo"),
+  progressBar: document.getElementById("progressBar"),
   prompt: document.getElementById("prompt"),
   choices: document.getElementById("choices"),
   feedback: document.getElementById("feedback"),
@@ -24,6 +28,7 @@ const el = {
 
 let stats = loadStats();
 let session = null;
+let availableLists = [];
 
 init();
 
@@ -35,6 +40,83 @@ el.resetStatsBtn.addEventListener("click", () => {
   stats = {};
   alert("Learning stats reset.");
 });
+el.listPreset.addEventListener("change", onPresetChange);
+el.listStart.addEventListener("change", syncRange);
+el.listEnd.addEventListener("change", syncRange);
+
+function init() {
+  setupListDropdowns();
+  updateListPreview();
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+
+function setupListDropdowns() {
+  availableLists = [...new Set(WORDS.map((w) => w.list))].sort((a, b) => a - b);
+  el.listStart.innerHTML = "";
+  el.listEnd.innerHTML = "";
+
+  availableLists.forEach((n) => {
+    const a = document.createElement("option");
+    a.value = String(n);
+    a.textContent = `List ${n}`;
+    el.listStart.appendChild(a);
+
+    const b = document.createElement("option");
+    b.value = String(n);
+    b.textContent = `List ${n}`;
+    el.listEnd.appendChild(b);
+  });
+
+  el.listStart.value = String(availableLists[0]);
+  el.listEnd.value = String(availableLists[availableLists.length - 1]);
+}
+
+function onPresetChange() {
+  const preset = el.listPreset.value;
+  const min = availableLists[0];
+  const max = availableLists[availableLists.length - 1];
+
+  if (preset === "all") {
+    el.listStart.value = String(min);
+    el.listEnd.value = String(max);
+  } else if (preset === "first4") {
+    el.listStart.value = String(min);
+    el.listEnd.value = String(Math.min(min + 3, max));
+  } else if (preset === "first8") {
+    el.listStart.value = String(min);
+    el.listEnd.value = String(Math.min(min + 7, max));
+  } else if (preset === "last6") {
+    el.listStart.value = String(Math.max(max - 5, min));
+    el.listEnd.value = String(max);
+  }
+
+  syncRange();
+}
+
+function syncRange() {
+  let start = Number(el.listStart.value);
+  let end = Number(el.listEnd.value);
+  if (start > end) {
+    [start, end] = [end, start];
+    el.listStart.value = String(start);
+    el.listEnd.value = String(end);
+  }
+  updateListPreview();
+}
+
+function updateListPreview() {
+  const lists = selectedLists();
+  const count = WORDS.filter((w) => lists.includes(w.list)).length;
+  el.listPreview.textContent = `Using lists ${lists[0]}-${lists[lists.length - 1]} (${count} words)`;
+}
+
+function selectedLists() {
+  const start = Number(el.listStart.value);
+  const end = Number(el.listEnd.value);
+  return availableLists.filter((n) => n >= start && n <= end);
+}
 
 function loadStats() {
   try {
@@ -48,26 +130,16 @@ function saveStats() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
 }
 
-function selectedLists() {
-  return [...document.querySelectorAll(".list-check")]
-    .filter((c) => c.checked)
-    .map((c) => Number(c.value));
-}
-
 function startQuiz() {
   const lists = selectedLists();
-  if (!lists.length) {
-    alert("Select at least one list.");
-    return;
-  }
-
   let pool = WORDS.filter((w) => lists.includes(w.list));
+
   if (el.stuckOnly.checked) {
     pool = pool.filter((w) => getWordStats(w.word).wrong >= 2 || getWordStats(w.word).mastery < 0.55);
   }
 
   if (pool.length < 4) {
-    alert("Not enough words in this selection. Try selecting more lists.");
+    alert("Not enough words in this selection. Try a wider range.");
     return;
   }
 
@@ -84,6 +156,7 @@ function startQuiz() {
 
   el.summaryPanel.classList.add("hidden");
   el.quizPanel.classList.remove("hidden");
+  el.progressBar.style.width = "0%";
   nextQuestion();
 }
 
@@ -141,11 +214,7 @@ function buildQuestion(target) {
   if (quizType === "group_to_word") {
     const prompt = `Pick the best word for: ${target.group}`;
     const sameGroup = session.pool.filter((w) => w.group === target.group && w.word !== target.word);
-    const distractors = shuffle([
-      ...sameGroup,
-      ...session.pool.filter((w) => w.group !== target.group),
-    ]).slice(0, 3);
-
+    const distractors = shuffle([...sameGroup, ...session.pool.filter((w) => w.group !== target.group)]).slice(0, 3);
     const options = shuffle([target, ...distractors]).map((w) => ({ label: w.word, correct: w.word === target.word }));
     return { prompt, options, answer: target.word };
   }
@@ -153,10 +222,7 @@ function buildQuestion(target) {
   const prompt = `Choose the best meaning group for: ${target.word}`;
   const allGroups = [...new Set(session.pool.map((w) => w.group))].filter((g) => g !== target.group);
   const wrongGroups = shuffle(allGroups).slice(0, 3);
-  const options = shuffle([
-    { label: target.group, correct: true },
-    ...wrongGroups.map((g) => ({ label: g, correct: false })),
-  ]);
+  const options = shuffle([{ label: target.group, correct: true }, ...wrongGroups.map((g) => ({ label: g, correct: false }))]);
   return { prompt, options, answer: target.group };
 }
 
@@ -177,6 +243,7 @@ function nextQuestion() {
   el.qInfo.textContent = `Q ${session.qNo}/${session.maxQ}`;
   el.scoreInfo.textContent = `Score: ${session.correct}`;
   el.accuracyInfo.textContent = `Accuracy: ${Math.round((session.correct / Math.max(1, session.qNo - 1)) * 100)}%`;
+  el.progressBar.style.width = `${Math.round((session.qNo / session.maxQ) * 100)}%`;
   el.prompt.textContent = q.prompt;
   el.feedback.textContent = "";
   el.feedback.className = "feedback";
@@ -242,11 +309,7 @@ function showFamilyHint(word) {
     .filter((w) => w !== word && (w.startsWith(base) || sharedPrefix(word, w) >= 5))
     .slice(0, 6);
 
-  if (family.length) {
-    el.familyHint.textContent = `Word family hint: ${family.join(", ")}`;
-  } else {
-    el.familyHint.textContent = "";
-  }
+  el.familyHint.textContent = family.length ? `Word family hint: ${family.join(", ")}` : "";
 }
 
 function sharedPrefix(a, b) {
@@ -260,9 +323,7 @@ function endQuiz() {
 
   const total = session.qNo;
   const acc = Math.round((session.correct / Math.max(1, total)) * 100);
-  const wrongSorted = Object.entries(session.wrongThisSession)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15);
+  const wrongSorted = Object.entries(session.wrongThisSession).sort((a, b) => b[1] - a[1]).slice(0, 15);
 
   el.quizPanel.classList.add("hidden");
   el.summaryPanel.classList.remove("hidden");
@@ -289,21 +350,4 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
-}
-
-function init() {
-  renderListOptions();
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
-  }
-}
-
-function renderListOptions() {
-  const lists = [...new Set(WORDS.map((w) => w.list))].sort((a, b) => a - b);
-  el.listContainer.innerHTML = "";
-  lists.forEach((n) => {
-    const label = document.createElement("label");
-    label.innerHTML = `<input type="checkbox" class="list-check" value="${n}" checked /> List ${n}`;
-    el.listContainer.appendChild(label);
-  });
 }
