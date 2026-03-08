@@ -145,6 +145,7 @@ function startQuiz() {
 
   session = {
     pool,
+    families: buildFamilies(pool),
     maxQ: Math.max(5, Math.min(200, Number(el.questionCount.value) || 30)),
     qNo: 0,
     correct: 0,
@@ -208,8 +209,37 @@ function pickQuestionWord() {
 
 function buildQuestion(target) {
   const quizType = el.quizType.value === "mixed"
-    ? (Math.random() < 0.5 ? "word_to_group" : "group_to_word")
+    ? (Math.random() < 0.7 ? (Math.random() < 0.5 ? "family_match" : "family_odd") : (Math.random() < 0.5 ? "word_to_group" : "group_to_word"))
     : el.quizType.value;
+
+  const family = session.families.byWord[target.word] || [];
+  if (quizType === "family_match" && family.length) {
+    const correct = shuffle(family)[0];
+    const distractors = shuffle(
+      session.pool
+        .map((w) => w.word)
+        .filter((w) => w !== target.word && !family.includes(w))
+    ).slice(0, 3);
+    const options = shuffle([
+      { label: correct, correct: true },
+      ...distractors.map((w) => ({ label: w, correct: false })),
+    ]);
+    return { prompt: `Main word: ${target.word}. Pick a word from the same family.`, options, answer: correct };
+  }
+
+  if (quizType === "family_odd" && family.length >= 3) {
+    const familyWords = shuffle(family).slice(0, 3);
+    const outsider = shuffle(
+      session.pool
+        .map((w) => w.word)
+        .filter((w) => w !== target.word && !family.includes(w))
+    )[0];
+    const options = shuffle([
+      ...familyWords.map((w) => ({ label: w, correct: false })),
+      { label: outsider, correct: true },
+    ]);
+    return { prompt: `Main word: ${target.word}. Which word is NOT in this family?`, options, answer: outsider };
+  }
 
   if (quizType === "group_to_word") {
     const prompt = `Pick the best word for: ${target.group}`;
@@ -303,13 +333,18 @@ function answerQuestion(opt, btn) {
 }
 
 function showFamilyHint(word) {
-  const base = word.slice(0, 4);
-  const family = WORDS
-    .map((w) => w.word)
-    .filter((w) => w !== word && (w.startsWith(base) || sharedPrefix(word, w) >= 5))
-    .slice(0, 6);
+  const family = (session && session.families.byWord[word])
+    ? session.families.byWord[word].slice(0, 8)
+    : [];
 
-  el.familyHint.textContent = family.length ? `Word family hint: ${family.join(", ")}` : "";
+  if (family.length) {
+    el.familyHint.textContent = `Family words: ${family.join(", ")}`;
+    return;
+  }
+
+  const base = word.slice(0, 4);
+  const fallback = WORDS.map((w) => w.word).filter((w) => w !== word && (w.startsWith(base) || sharedPrefix(word, w) >= 5)).slice(0, 6);
+  el.familyHint.textContent = fallback.length ? `Word family hint: ${fallback.join(", ")}` : "";
 }
 
 function sharedPrefix(a, b) {
@@ -350,4 +385,24 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+function buildFamilies(pool) {
+  const byGroup = {};
+  pool.forEach((w) => {
+    if (!w.antonym) {
+      byGroup[w.group] = byGroup[w.group] || [];
+      if (!byGroup[w.group].includes(w.word)) byGroup[w.group].push(w.word);
+    }
+  });
+
+  const byWord = {};
+  Object.values(byGroup).forEach((words) => {
+    if (words.length < 3) return;
+    words.forEach((w) => {
+      byWord[w] = words.filter((x) => x !== w);
+    });
+  });
+
+  return { byGroup, byWord };
 }
