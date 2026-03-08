@@ -152,6 +152,7 @@ function startQuiz() {
     askedWords: [],
     retryQueue: [],
     wrongThisSession: {},
+    wordAskCount: {},
     active: null,
   };
 
@@ -174,11 +175,14 @@ function updateMastery(s) {
 
 function weightedPick(words) {
   const now = session.qNo;
-  const recent = new Set(session.askedWords.slice(-3));
+  const recent = new Set(session.askedWords.slice(-4));
   const items = words.filter((w) => words.length <= 6 || !recent.has(w.word));
+  const minAsked = Math.min(...items.map((w) => session.wordAskCount[w.word] || 0));
+  const freshItems = items.filter((w) => (session.wordAskCount[w.word] || 0) === minAsked);
+  const candidatePool = freshItems.length ? freshItems : items;
 
   let total = 0;
-  const arr = items.map((w) => {
+  const arr = candidatePool.map((w) => {
     const s = getWordStats(w.word);
     const wrongBias = 1 + s.wrong * 2.2;
     const lowMasteryBias = 1 + (1 - s.mastery) * 3;
@@ -201,7 +205,8 @@ function weightedPick(words) {
 function pickQuestionWord() {
   if (session.retryQueue.length && Math.random() < 0.65) {
     const retryWord = session.retryQueue.shift();
-    const found = session.pool.find((w) => w.word === retryWord);
+    const tooRecent = session.askedWords.slice(-3).includes(retryWord);
+    const found = tooRecent ? null : session.pool.find((w) => w.word === retryWord);
     if (found) return found;
   }
   return weightedPick(session.pool);
@@ -269,6 +274,7 @@ function nextQuestion() {
   session.active = { target, q, answered: false };
   session.qNo += 1;
   session.askedWords.push(target.word);
+  session.wordAskCount[target.word] = (session.wordAskCount[target.word] || 0) + 1;
 
   el.qInfo.textContent = `Q ${session.qNo}/${session.maxQ}`;
   el.scoreInfo.textContent = `Score: ${session.correct}`;
