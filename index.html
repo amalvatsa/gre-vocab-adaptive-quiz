@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b6b6b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="GRE Vocab Quiz" />
+  <title>GRE Vocab Adaptive Quiz</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <h1>GRE Vocab Adaptive Quiz</h1>
+    <p class="sub">Built from your Vocab List 1-4 PDF. Missed words are prioritized automatically.</p>
+
+    <section class="panel controls">
+      <div class="row">
+        <label>Quiz Mode</label>
+        <select id="quizType">
+          <option value="mixed">Mixed</option>
+          <option value="word_to_group">Word -> Meaning Group</option>
+          <option value="group_to_word">Meaning Group -> Word</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label>Word Lists</label>
+        <div id="listContainer" class="checks"></div>
+      </div>
+
+      <div class="row">
+        <label>Questions</label>
+        <input id="questionCount" type="number" min="5" max="200" value="30" />
+      </div>
+
+      <div class="row">
+        <label><input id="stuckOnly" type="checkbox" /> Focus only on stuck words</label>
+      </div>
+
+      <div class="actions">
+        <button id="startBtn">Start Quiz</button>
+        <button id="resetStatsBtn" class="secondary">Reset Learning Stats</button>
+      </div>
+    </section>
+
+    <section id="quizPanel" class="panel hidden">
+      <div class="stats">
+        <span id="qInfo"></span>
+        <span id="scoreInfo"></span>
+        <span id="accuracyInfo"></span>
+      </div>
+
+      <h2 id="prompt"></h2>
+      <div id="choices" class="choices"></div>
+
+      <div id="feedback" class="feedback"></div>
+      <div id="familyHint" class="family"></div>
+
+      <div class="actions">
+        <button id="nextBtn" disabled>Next</button>
+        <button id="endBtn" class="secondary">End Quiz</button>
+      </div>
+    </section>
+
+    <section id="summaryPanel" class="panel hidden">
+      <h3>Session Summary</h3>
+      <p id="summaryText"></p>
+      <div id="stuckWords" class="chips"></div>
+    </section>
+  </main>
+
+  <script src="./words.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

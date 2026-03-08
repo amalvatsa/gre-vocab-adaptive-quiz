@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# OCR/build artifacts
+tmp_ocr/
+.vendor/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local env
+.env
+.env.*
+
+# Optional source docs (large/private)
+*.pdf

@@ -1,0 +1,9 @@
+{
+  "name": "GRE Vocab Adaptive Quiz",
+  "short_name": "GRE Vocab",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f2ea",
+  "theme_color": "#0b6b6b",
+  "description": "Adaptive GRE vocabulary quiz with stuck-word repetition"
+}
